@@ -14,6 +14,12 @@
           "database_id": "6b4325d9-f23d-43ad-9b8e-0559c3a9d094"
         }
     ],
+	"kv_namespaces": [
+        {
+            "binding": "KV",
+            "id": "fb0362b2a4b34973babe63c0c74c5e64"
+        }
+    ],    
     "secrets_store_secrets": [
         {
             "store_id": "b081979e09e34a8a92fd356fb498b0f4",

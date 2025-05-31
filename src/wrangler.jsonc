@@ -16,8 +16,8 @@
     ],
 	"kv_namespaces": [
         {
-            "binding": "KV_BINDING",
-            "id": "9566561f580546f98dd075c8b89e156a"
+            "binding": "KV",
+            "id": "fb0362b2a4b34973babe63c0c74c5e64"
         }
     ],
     "secrets_store_secrets": [
