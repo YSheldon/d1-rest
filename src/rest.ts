@@ -181,7 +181,7 @@ export async function handleRest(c: Context<{ Bindings: Env }>): Promise<Respons
     const tableName = pathParts[1];
     const id = pathParts[2];
     
-    if (pathParts.length === 3) {
+    if (pathParts.length > 3) {
         const KVPrefix = pathParts[1];
         const KVNamespace = pathParts[2];
         const Key = pathParts[3];
