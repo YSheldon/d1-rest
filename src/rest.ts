@@ -163,7 +163,7 @@ async function handleKvGet(c: Context<{ Bindings: Env }>, id: string): Promise<R
         }
         return c.json({ key: id, value });
     } catch (error: any) {
-        return c.json({ error: error.message }, 500);
+        return c.json({ error: error.message, "id" : id }, 500);
     }
 }
 
