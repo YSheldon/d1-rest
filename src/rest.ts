@@ -153,6 +153,21 @@ async function handleDelete(c: Context<{ Bindings: Env }>, tableName: string, id
 }
 
 /**
+ * Handles GET requests to fetch a value from KV
+ */
+async function handleKvGet(c: Context<{ Bindings: Env }>, id: string): Promise<Response> {
+    try {
+        const value = await c.env.KV.get(id);
+        if (value === null) {
+            return c.json({ error: 'Key not found' }, 404);
+        }
+        return c.json({ key: id, value });
+    } catch (error: any) {
+        return c.json({ error: error.message }, 500);
+    }
+}
+
+/**
  * Main REST handler that routes requests to appropriate handlers
  */
 export async function handleRest(c: Context<{ Bindings: Env }>): Promise<Response> {
@@ -166,6 +181,27 @@ export async function handleRest(c: Context<{ Bindings: Env }>): Promise<Respons
     const tableName = pathParts[1];
     const id = pathParts[2];
     
+    if (pathParts.length == 3) {
+        const KVPrefix = pathParts[1];
+        const KVNamespace = pathParts[2];
+        const Key = pathParts[3];
+        if (KVPrefix != 'KV') {
+            return c.json({ error: 'Invalid path. Expected format: /rest/KV/{KVNamespace}/{key?}' }, 400);
+        }
+
+        if (KVNamespace === 'Alphas') {
+            if (c.req.method === 'GET' && Key) {
+                return handleKvGet(c, Key);
+            }
+        }
+        else {
+            return c.json({ error: 'KVNamespace is not exist!' }, 400);
+        }
+        
+    }
+
+
+
     switch (c.req.method) {
         case 'GET':
             return handleGet(c, tableName, id);
