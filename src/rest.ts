@@ -157,7 +157,7 @@ async function handleDelete(c: Context<{ Bindings: Env }>, tableName: string, id
  */
 async function handleKvGet(c: Context<{ Bindings: Env }>, id: string): Promise<Response> {
     try {
-        const value = await c.env.KV.get(id);
+        const value = await c.env.KV_BINDING.get(id);
         if (value === null) {
             return c.json({ error: 'Key not found' }, 404);
         }

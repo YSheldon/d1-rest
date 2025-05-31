@@ -15,11 +15,11 @@
         }
     ],
 	"kv_namespaces": [
-		{
-		"binding": "KV",
-		"id": "8ac8309c1f1a4a59acf1e7e597f495e1"
-		}
-	],
+        {
+            "binding": "KV_BINDING",
+            "id": "9566561f580546f98dd075c8b89e156a"
+        }
+    ],
     "secrets_store_secrets": [
         {
             "store_id": "b081979e09e34a8a92fd356fb498b0f4",
