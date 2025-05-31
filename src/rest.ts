@@ -181,11 +181,11 @@ export async function handleRest(c: Context<{ Bindings: Env }>): Promise<Respons
     const tableName = pathParts[1];
     const id = pathParts[2];
     
-    if (pathParts.length == 3) {
+    if (pathParts.length === 3) {
         const KVPrefix = pathParts[1];
         const KVNamespace = pathParts[2];
         const Key = pathParts[3];
-        if (KVPrefix != 'KV') {
+        if (KVPrefix !== 'KV') {
             return c.json({ error: 'Invalid path. Expected format: /rest/KV/{KVNamespace}/{key?}' }, 400);
         }
 
@@ -193,6 +193,10 @@ export async function handleRest(c: Context<{ Bindings: Env }>): Promise<Respons
             if (c.req.method === 'GET' && Key) {
                 return handleKvGet(c, Key);
             }
+            else {
+                return c.json({ error: 'KV Method not allowed!' }, 400);
+            }
+
         }
         else {
             return c.json({ error: 'KVNamespace is not exist!' }, 400);
