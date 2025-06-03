@@ -323,24 +323,23 @@ export async function handleRest(c: Context<{ Bindings: Env }>): Promise<Respons
         const KVNamespace = pathParts[2];
         switch (c.req.method) {
             case 'GET':
-                if (pathParts.length === 3) {
-                    return handleKvGetKeys(c, KVNamespace);
+                // Check if multiple keys are provided as query parameters
+                const searchParams = new URL(c.req.url).searchParams;
+                const keys = searchParams.get('keys');
+                
+                if (keys) {
+                    // Split the comma-separated keys and process them
+                    const keyArray = keys.split(',').map(k => k.trim()).filter(Boolean);
+                    if (keyArray.length > 0) {
+                        return handleKvGetMultiple(c, KVNamespace, keyArray);
+                    }
                 }
                 else {
-                    // Check if multiple keys are provided as query parameters
-                    const searchParams = new URL(c.req.url).searchParams;
-                    const keys = searchParams.get('keys');
-                    
-                    if (keys) {
-                        // Split the comma-separated keys and process them
-                        const keyArray = keys.split(',').map(k => k.trim()).filter(Boolean);
-                        if (keyArray.length > 0) {
-                            return handleKvGetMultiple(c, KVNamespace, keyArray);
-                        }
-                    }
-                    
-                    return c.json({ error: 'No keys specified. Use ?keys=key1,key2,key3' }, 400);
+                    return handleKvGetKeys(c, KVNamespace);
                 }
+
+                
+                return c.json({ error: 'No keys specified. Use ?keys=key1,key2,key3' }, 400);
 
             case 'PUT':
                 const data = await c.req.json();
