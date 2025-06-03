@@ -16,8 +16,12 @@
     ],
 	"kv_namespaces": [
         {
-            "binding": "KV",
+            "binding": "Alphas",
             "id": "fb0362b2a4b34973babe63c0c74c5e64"
+        },
+        {
+            "binding": "System",
+            "id": "d0b3a2f246384fc98341108c251d8431"
         }
     ],    
     "secrets_store_secrets": [

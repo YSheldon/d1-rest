@@ -153,11 +153,11 @@ async function handleDelete(c: Context<{ Bindings: Env }>, tableName: string, id
 }
 
 /**
- * Handles GET requests to fetch a value from KV
+ * Handles GET requests to fetch a value from Alphas
  */
 async function handleKvGet(c: Context<{ Bindings: Env }>, id: string): Promise<Response> {
     try {
-        const value = await c.env.KV.get(id);
+        const value = await c.env.Alphas.get(id);
         if (value === null) {
             return c.json({ error: 'Key not found' }, 404);
         }
@@ -168,57 +168,212 @@ async function handleKvGet(c: Context<{ Bindings: Env }>, id: string): Promise<R
 }
 
 /**
+ * Handles GET requests to fetch multiple values from Alphas
+ */
+async function handleKvGetMultiple(c: Context<{ Bindings: Env }>, kvNamespace: string, keys: string[]): Promise<Response> {
+    try {
+        // Input validation
+        if (!keys?.length) {
+            return c.json({ error: 'No keys provided' }, 400);
+        }
+
+        if (!c.env[kvNamespace]) {
+            return c.json({ 
+                error: 'Invalid KV namespace',
+                namespace: kvNamespace 
+            }, 400);
+        }
+
+        const values = await c.env[kvNamespace].get(keys);
+        if (!values) {
+            return c.json({ 
+                error: 'Failed to fetch values',
+                namespace: kvNamespace,
+                keys
+            }, 404);
+        }
+
+        const result = keys.reduce<Record<string, any>>((acc, key, index) => {
+            const value = values[index];
+            if (value !== null && value !== undefined) {
+                acc[key] = value;
+            }
+            return acc;
+        }, {});
+
+        if (Object.keys(result).length === 0) {
+            return c.json({ 
+                error: 'No values found',
+                namespace: kvNamespace,
+                keys 
+            }, 404);
+        }
+
+        return c.json({
+            success: true,
+            namespace: kvNamespace,
+            data: result
+        });
+    } catch (error: any) {
+        return c.json({ 
+            error: error.message,
+            namespace: kvNamespace,
+            keys 
+        }, 500);
+    }
+}
+
+
+async function handleKvPutMultiple(c: Context<{ Bindings: Env }>, kvNamespace: string, data: Record<string, any>): Promise<Response> {
+    try {
+        if (!data || Object.keys(data).length === 0) {
+            return c.json({ error: 'No data provided' }, 400);
+        }
+
+        if (!c.env[kvNamespace]) {
+            return c.json({ 
+                error: 'Invalid KV namespace',
+                namespace: kvNamespace 
+            }, 400);
+        }
+
+        // 批量处理所有键值对
+        const entries = Object.entries(data);
+        await Promise.all(
+            entries.map(([key, value]) => 
+                c.env[kvNamespace].put(key, value)
+            )
+        );
+
+        return c.json({
+            success: true,
+            namespace: kvNamespace,
+            data: {
+                processed: entries.length,
+                keys: Object.keys(data)
+            }
+        });
+    } catch (error: any) {
+        return c.json({ 
+            error: error.message,
+            namespace: kvNamespace
+        }, 500);
+    }
+}
+
+async function handleKvGetKeys(c: Context<{ Bindings: Env }>, kvNamespace: string): Promise<Response> {
+    try {
+        if (!c.env[kvNamespace]) {
+            return c.json({ 
+                error: 'Invalid KV namespace',
+                namespace: kvNamespace 
+            }, 400);
+        }
+
+        let allKeys: string[] = [];
+        let cursor: string | null = null;
+        let list_complete = false;
+    
+        do {
+            let options: { cursor?: string } = {};
+            if (cursor) {
+                options.cursor = cursor;
+            }
+    
+            // 列出键
+            const value = await c.env[kvNamespace].list(options);
+    
+            // 将当前获取的键添加到 allKeys 数组中
+            allKeys = allKeys.concat(value.keys.map((key: { name: string }) => key.name));
+    
+            // 更新游标
+            cursor = value.cursor;
+            list_complete = value.list_complete
+        } while (list_complete === false);
+    
+        return c.json({
+            success: true,
+            namespace: kvNamespace,
+            keys: allKeys,
+            total: allKeys.length
+        });
+        
+    } catch (error: any) {
+        return c.json({ 
+            error: error.message,
+            namespace: kvNamespace
+        }, 500);
+    }
+}
+
+/**
  * Main REST handler that routes requests to appropriate handlers
  */
 export async function handleRest(c: Context<{ Bindings: Env }>): Promise<Response> {
     const url = new URL(c.req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     
-    if (pathParts.length < 2) {
-        return c.json({ error: 'Invalid path. Expected format: /rest/{tableName}/{id?}' }, 400);
+    if (pathParts.length < 3) {
+        return c.json({ error: 'Invalid path. Expected format: /rest/KV or DB/{KVNamespace} or {tableName}/{keys?} or {id?}' }, 400);
     }
 
-    const tableName = pathParts[1];
-    const id = pathParts[2];
+    const Prefix = pathParts[1];
     
-    if (pathParts.length > 3) {
-        const KVPrefix = pathParts[1];
+    if (Prefix === 'KV') {
         const KVNamespace = pathParts[2];
-        const Key = pathParts[3];
-        if (KVPrefix !== 'KV') {
-            return c.json({ error: 'Invalid path. Expected format: /rest/KV/{KVNamespace}/{key?}' }, 400);
-        }
+        switch (c.req.method) {
+            case 'GET':
+                if (pathParts.length === 3) {
+                    return handleKvGetKeys(c, KVNamespace);
+                }
+                else {
+                    // Check if multiple keys are provided as query parameters
+                    const searchParams = new URL(c.req.url).searchParams;
+                    const keys = searchParams.get('keys');
+                    
+                    if (keys) {
+                        // Split the comma-separated keys and process them
+                        const keyArray = keys.split(',').map(k => k.trim()).filter(Boolean);
+                        if (keyArray.length > 0) {
+                            return handleKvGetMultiple(c, KVNamespace, keyArray);
+                        }
+                    }
+                    
+                    return c.json({ error: 'No keys specified. Use ?keys=key1,key2,key3' }, 400);
+                }
 
-        if (KVNamespace === 'Alphas') {
-            if (c.req.method === 'GET' && Key) {
-                return handleKvGet(c, Key);
+            case 'PUT':
+                const data = await c.req.json();
+                return handleKvPutMultiple(c, KVNamespace, data);
+            case 'PATCH':
+            case 'DELETE':
+            case 'POST':
+            default:
+                return c.json({ error: 'KV Method not allowed or invalid request format or Invalid path! Expected format: /rest/KV/{KVNamespace}/{keys?}' }, 405);
             }
-            else {
-                return c.json({ error: 'KV Method not allowed!' }, 400);
-            }
-
-        }
-        else {
-            return c.json({ error: 'KVNamespace is not exist!' }, 400);
+    }
+    else if (Prefix === 'DB') {
+        // DB REST OPERATIONS
+        const tableName = pathParts[2];
+        const id = pathParts[3];
+        switch (c.req.method) {
+            case 'GET':
+                return handleGet(c, tableName, id);
+            case 'POST':
+                return handlePost(c, tableName);
+            case 'PUT':
+            case 'PATCH':
+                if (!id) return c.json({ error: 'ID is required for updates' }, 400);
+                return handleUpdate(c, tableName, id);
+            case 'DELETE':
+                if (!id) return c.json({ error: 'ID is required for deletion' }, 400);
+                return handleDelete(c, tableName, id);
+            default:
+                return c.json({ error: 'Method not allowed' }, 405);
         }
         
     }
-
-
-
-    switch (c.req.method) {
-        case 'GET':
-            return handleGet(c, tableName, id);
-        case 'POST':
-            return handlePost(c, tableName);
-        case 'PUT':
-        case 'PATCH':
-            if (!id) return c.json({ error: 'ID is required for updates' }, 400);
-            return handleUpdate(c, tableName, id);
-        case 'DELETE':
-            if (!id) return c.json({ error: 'ID is required for deletion' }, 400);
-            return handleDelete(c, tableName, id);
-        default:
-            return c.json({ error: 'Method not allowed' }, 405);
+    else {
+        return c.json({ error: 'Invalid path. Expected format: /rest/KV or DB/{KVNamespace} or {tableName}/{Key} or {id}' }, 400);
     }
-} 
+}

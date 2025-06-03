@@ -4,7 +4,8 @@ import { handleRest } from './rest';
 
 export interface Env {
     DB: D1Database;
-    KV: KVNamespace;
+    Alphas: KVNamespace;
+    System: KVNamespace;
     SECRET: SecretsStoreSecret;
 }
 
