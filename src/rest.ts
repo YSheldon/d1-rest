@@ -205,7 +205,8 @@ async function handleKvGetMultiple(c: Context<{ Bindings: Env }>, kvNamespace: s
             return c.json({ 
                 error: 'No values found',
                 namespace: kvNamespace,
-                keys 
+                keys,
+                values 
             }, 404);
         }
 
