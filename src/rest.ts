@@ -184,7 +184,7 @@ async function handleKvGetMultiple(c: Context<{ Bindings: Env }>, kvNamespace: s
             }, 400);
         }
 
-        const values = await c.env[kvNamespace].keys.bulk_get(["Version", "S"]);
+        const values = await c.env[kvNamespace].get(keys);
         if (!values) {
             return c.json({ 
                 error: 'Failed to fetch values',
